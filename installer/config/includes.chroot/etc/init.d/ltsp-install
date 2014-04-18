@@ -78,9 +78,6 @@ while $RET; do
   fi
 done
 
-echo "*****************$ANS"
-
-# exit
 
 umount /dev/${DISK}1
 umount /dev/${DISK}2
@@ -88,6 +85,7 @@ umount /dev/${DISK}2
 
 
 parted --align optimal --script /dev/${DISK} -- mklabel msdos
+
 parted --align optimal --script /dev/${DISK} -- mkpart primary 2048s 8G
 parted --align optimal --script /dev/${DISK} -- set 1 boot on
 parted --align optimal --script /dev/${DISK} -- mkpart primary 8G 95%
@@ -104,7 +102,7 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
     # install grub
     grub-install --force --root-directory=${MNT}/part1 /dev/${DISK}
     if cd ${MNT}/part1/boot/grub/; then
-      cp /lib/live/mount/medium/grub.cfg .
+      cp /var/lib/andrijn/grug.cfg .
       #wget ${BOOT_IMAGES_URL}/grub.cfg
       echo -n ""
     else
