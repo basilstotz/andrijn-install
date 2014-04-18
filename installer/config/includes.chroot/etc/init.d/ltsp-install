@@ -1,7 +1,7 @@
 #! /bin/sh
 
 
-BOOT_IMAGES_URL="http://172.16.42.110/boot-images"
+#BOOT_IMAGES_URL="http://172.16.42.110/boot-images"
 LTSP_IMAGES_URL="http://172.16.42.10/ltsp-images"
 
 if test -f /etc/default/ltsp-install; then
@@ -9,7 +9,7 @@ if test -f /etc/default/ltsp-install; then
 fi
 
 MNT="/mnt"
-
+IMAGES="ltsp-images"
 
 do_install()
 {
@@ -95,7 +95,7 @@ parted --align optimal --script /dev/${DISK} -- mkpart primary 8G 95%
 umount /dev/${DISK}1
 umount /dev/${DISK}2
 
-mkfs.ext4 -L ltsp-images /dev/${DISK}1
+mkfs.ext4 -L ${IMAGES} /dev/${DISK}1
 mkfs.ext4 -L ltsp-home /dev/${DISK}2
 
 
@@ -113,8 +113,8 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
     fi
 
     # install initial boot-image
-    mkdir ${MNT}/part1/ltsp-images/
-    if cd ${MNT}/part1/ltsp-images/; then
+    mkdir ${MNT}/part1/${IMAGES}/
+    if cd ${MNT}/part1/${IMAGES}/; then
        if $0 sync; then
           echo "Syncing ok! Your sytem is ready now."
        else
@@ -224,9 +224,9 @@ do_sync()
 #
 do_start()
 {
-  if ! test -d ${MNT}/boot-images; then mkdir ${MNT}/boot-images;fi
+  if ! test -d ${MNT}/${IMAGES}; then mkdir ${MNT}/${IMAGES};fi
   
-  if mount -L boot-images ${MNT}/boot-images 2>/dev/null >/dev/null; then
+  if mount -L ${IMAGES} ${MNT}/${IMAGES} 2>/dev/null >/dev/null; then
     echo "Use: \"sudo service ltsp-install [restore|backup|sync]\" to manage LTSP-Workstation"
   else
     echo "Use: \"sudo service ltsp-install install\" to install LTSP-Workstation"
@@ -239,7 +239,7 @@ do_start()
 #
 do_stop()
 {
-  umount ${MNT}/boot-images
+  umount ${MNT}/${IMAGES}
 }
 
 
@@ -250,7 +250,9 @@ do_stop()
         do_install
         ;;
     sync)
-        do_sync ${LTSP_IMAGES_URL} ${MNT}/ltsp-boot/
+        if test -f ${NMT}/${IMAGES}/boot; then
+            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/
+        fi
         ;;
     backup)
         echo "not implemented yet" 
@@ -259,10 +261,14 @@ do_stop()
         echo "not implemented yet"
         ;;
     start)
-        do_start
+        if ! test -d ${NMT}/${IMAGES}/boot; then
+          do_start
+        fi
         ;;
     stop)
-        do_stop
+        if test -d ${NMT}/${IMAGES}/boot; then
+          do_stop
+        fi
         ;;
     *)
 	echo "Usage: $SCRIPTNAME {backup|restore|install|sync|start|stop}" >&2
