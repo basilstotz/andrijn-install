@@ -250,9 +250,11 @@ do_stop()
         ;;
     sync)
         if test -d ${NMT}/${IMAGES}/boot; then
+            echo "syncing..."
             do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/ img
+            echo "done"
         else
-            echo "error: not mounted"
+            echo "ltsp-images is not mounted"
         fi
         ;;
     backup)
@@ -263,12 +265,18 @@ do_stop()
         ;;
     start)
         if ! test -d ${NMT}/${IMAGES}/boot; then
+          echo "starting"
           do_start
+        else
+          echo "already started"
         fi
         ;;
     stop)
         if test -d ${NMT}/${IMAGES}/boot; then
+          echo "stopping"
           do_stop
+        else
+          echo "alerady stopped"
         fi
         ;;
     *)
