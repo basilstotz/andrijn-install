@@ -96,7 +96,7 @@ umount /dev/${DISK}1
 umount /dev/${DISK}2
 
 mkfs.ext4 -L ${IMAGES} /dev/${DISK}1
-mkfs.ext4 -L ltsp-home /dev/${DISK}2
+mkfs.ext4 -L ltsp-local /dev/${DISK}2
 
 
 if ! test -d ${MNT}/part1;then mkdir ${MNT}/part1;fi
@@ -104,7 +104,6 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
     # install grub
     grub-install --force --root-directory=${MNT}/part1 /dev/${DISK}
     if cd ${MNT}/part1/boot/grub/; then
-      rm *
       cp /lib/live/mount/medium/grub.cfg .
       #wget ${BOOT_IMAGES_URL}/grub.cfg
       echo -n ""
@@ -121,7 +120,7 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
           echo "Syncing not ok! Try later : sudo service ltsp-install sync."
        fi 
     else
-       echo "could not cd /mnt/part1/boot'images"
+       echo "could not cd /mnt/part1/boot-images"
     fi
 else
   echo "could not mount /dev/${DISK}1"
@@ -186,7 +185,7 @@ do_sync()
       if zsync "${URL}/$(printf "%06i" $VERSION_neu).${TYPE}.zsync"; then
        
         if test "$TYPE" = "iso"; then
-          wget -O ${MNT}/boot-images/boot/grub/grub.cfg ${URL}/grub.cfg
+          wget -O ${MNT}/${IMAGES}/boot/grub/grub.cfg ${URL}/grub.cfg
         fi
 
 
@@ -250,8 +249,10 @@ do_stop()
         do_install
         ;;
     sync)
-        if test -f ${NMT}/${IMAGES}/boot; then
-            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/
+        if test -d ${NMT}/${IMAGES}/boot; then
+            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/ img
+        else
+            echo "error: not mounted"
         fi
         ;;
     backup)
