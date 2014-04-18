@@ -249,9 +249,9 @@ do_stop()
         do_install
         ;;
     sync)
-        if test -d ${NMT}/${IMAGES}/boot; then
-            echo "syncing..."
-            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/ img
+        if test -d ${NMT}/${IMAGES}/${IMAGES}; then
+            echo "do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img"
+            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
             echo "done"
         else
             echo "ltsp-images is not mounted"
@@ -264,7 +264,7 @@ do_stop()
         echo "not implemented yet"
         ;;
     start)
-        if ! test -d ${NMT}/${IMAGES}/boot; then
+        if ! test -d ${NMT}/${IMAGES}/${IMAGES}; then
           echo "starting"
           do_start
         else
@@ -272,11 +272,11 @@ do_stop()
         fi
         ;;
     stop)
-        if test -d ${NMT}/${IMAGES}/boot; then
+        if test -d ${NMT}/${IMAGES}/${IMAGES}; then
           echo "stopping"
           do_stop
         else
-          echo "alerady stopped"
+          echo "already stopped"
         fi
         ;;
     *)
