@@ -84,22 +84,20 @@ echo "*****************$ANS"
 
 umount /dev/${DISK}1
 umount /dev/${DISK}2
-umount /dev/${DISK}3
+
 
 
 parted --align optimal --script /dev/${DISK} -- mklabel msdos
-parted --align optimal --script /dev/${DISK} -- mkpart primary 2048s 5G
+parted --align optimal --script /dev/${DISK} -- mkpart primary 2048s 8G
 parted --align optimal --script /dev/${DISK} -- set 1 boot on
-parted --align optimal --script /dev/${DISK} -- mkpart primary 5G 6G
-parted --align optimal --script /dev/${DISK} -- mkpart primary 6G 95%
+parted --align optimal --script /dev/${DISK} -- mkpart primary 8G 95%
 
 umount /dev/${DISK}1
 umount /dev/${DISK}2
-umount /dev/${DISK}3
 
-mkfs.ext4 -L boot-images /dev/${DISK}1
-mkfs.ext4 -L persistence /dev/${DISK}2
-mkfs.ext4 -L persistence /dev/${DISK}3
+mkfs.ext4 -L ltsp-images /dev/${DISK}1
+mkfs.ext4 -L ltsp-home /dev/${DISK}2
+
 
 if ! test -d ${MNT}/part1;then mkdir ${MNT}/part1;fi
 if mount /dev/${DISK}1 ${MNT}/part1; then
@@ -115,18 +113,13 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
     fi
 
     # install initial boot-image
-    mkdir ${MNT}/part1/boot-images/
-    if cd ${MNT}/part1/boot-images/; then
-       cat /dev/sr0 > 000000.iso
-       touch cur-iso-000000
-       touch version
-       echo "0" > version
-
-#      if wget ${BOOT_IMAGES_URL}/version; then
-#        wget ${BOOT_IMAGES_URL}/$(printf "%06i.iso" $(cat version))
-#        touch $(printf "cur-iso-%06i" $(cat version))
-#        echo -n ""
-#      fi
+    mkdir ${MNT}/part1/ltsp-images/
+    if cd ${MNT}/part1/ltsp-images/; then
+       if $0 sync; then
+          echo "Syncing ok! Your sytem is ready now."
+       else
+          echo "Syncing not ok! Try later : sudo service ltsp-install sync."
+       fi 
     else
        echo "could not cd /mnt/part1/boot'images"
     fi
@@ -141,21 +134,16 @@ if mount /dev/${DISK}2 ${MNT}/part2; then
 fi
 
 
-if ! test -d ${MNT}/part3;then mkdir ${MNT}/part3;fi
-if mount /dev/${DISK}3 ${MNT}/part3; then
-    echo "/opt/ltsp/images/" > ${MNT}/part3/persistence.conf
-    echo "/var/lib/tftpboot/ltsp/i386/" >> ${MNT}/part3/persistence.conf
-fi
 
 sleep 5
 umount ${MNT}/part1
 umount ${MNT}/part2
-umount ${MNT}/part3
+
 
 sleep 5
 umount ${MNT}/part1
 umount ${MNT}/part2
-umount ${MNT}/part3
+
 
 
 
@@ -236,33 +224,12 @@ do_sync()
 #
 do_start()
 {
-  if ! test -d /mnt/boot-images; then mkdir /mnt/boot-images;fi
-
+  if ! test -d ${MNT}/boot-images; then mkdir ${MNT}/boot-images;fi
   
-  if mount -L boot-images /mnt/boot-images 2>/dev/null >/dev/null; then
-
-    echo "Starting LTSP-Boot-Services"
-    # start sync-daemon in background
-    if ! test -f /var/run/sync-daemon.pid; then
-      $0 daemon &
-      echo $! > /var/run/sync-daemon.pid
-    fi
-
-    NAME=$(printf "%06i.img" $(cat /opt/ltsp/images/version))
-
-    if test -f /opt/ltsp/images/${NAME}; then
-      if ! test -d ${MNT}/image; then mkdir ${MNT}/image; fi
-      mount -t squashfs /opt/ltsp/images/${NAME} ${MNT}/image
-      rsync -r -l --safe-links --delete  ${MNT}/image/var/lib/tftpboot/ltsp/i386/ /var/lib/tftpboot/ltsp/i386/
-      umount ${MNT}/image
-      if test -h /opt/ltsp/images/i386.img; then rm /opt/ltsp/images/i386.img;fi 
-      ln -s /opt/ltsp/images/${NAME} /opt/ltsp/images/i386.img
-      service nbd-server restart
-    fi
-
-
+  if mount -L boot-images ${MNT}/boot-images 2>/dev/null >/dev/null; then
+    echo "Use: \"sudo service ltsp-install [restore|backup|sync]\" to manage LTSP-Workstation"
   else
-    echo "Use: \"service boot-setup install\" to install LTSP-Boot-Services"
+    echo "Use: \"sudo service ltsp-install install\" to install LTSP-Workstation"
   fi 
 } 
 
@@ -272,36 +239,25 @@ do_start()
 #
 do_stop()
 {
-   if test -f /var/run/sync-daemon.pid; then
-     kill $(cat /var/run/sync-daemon.pid)
-     rm /var/run/sync-daemon.pid
-  
-     umount ${MNT}/boot-images
-   fi
-}
-
-#
-# Function that sends a SIGHUP to the daemon/service
-#
-do_reload() 
-{
- do_stop
- do_start
+  umount ${MNT}/boot-images
 }
 
 
 
-# main
-
-  #if ! cat /proc/cmdline | grep -q "loop"; then exit; fi
 
   case "$1" in
     install)
         do_install
         ;;
     sync)
-        do_sync 
+        do_sync ${LTSP_IMAGES_URL} ${MNT}/ltsp-boot/
+        ;;
+    backup)
+        echo "not implemented yet" 
 	;;
+    restore)
+        echo "not implemented yet"
+        ;;
     start)
         do_start
         ;;
@@ -309,7 +265,7 @@ do_reload()
         do_stop
         ;;
     *)
-	echo "Usage: $SCRIPTNAME {install|sync|start|stop}" >&2
+	echo "Usage: $SCRIPTNAME {backup|restore|install|sync|start|stop}" >&2
 	exit 3
 	;;
   esac
