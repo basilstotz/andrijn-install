@@ -1,0 +1,318 @@
+#! /bin/sh
+
+
+BOOT_IMAGES_URL="http://172.16.42.110/boot-images"
+LTSP_IMAGES_URL="http://172.16.42.10/ltsp-images"
+
+if test -f /etc/default/ltsp-install; then
+  . /etc/default/ltsp-install
+fi
+
+MNT="/mnt"
+
+
+do_install()
+{
+
+
+echo
+echo "=================Attention===================="
+echo 
+echo "This Programm destroys your Disk. Typ \"I know this\" to continue!"
+echo
+read ANS
+
+if ! test "$ANS" = "I know this";then exit 1;fi
+
+
+  if test -d /mnt/boot; then
+    echo 
+    echo "It look like the system is already installed!"
+    echo -n "Do you want to overwrite your installation (Yes/No) "
+    read ANS
+    if test "$ANS" != "Yes"; then exit 1;fi
+  fi
+
+
+# install bootserver
+
+
+echo
+echo "Found the following disks:"
+cat /proc/partitions
+echo
+
+RET=true
+while $RET; do 
+
+  echo -n "Your choice (or quit)? "
+  read DISK
+
+  if test "$DISK" = "quit"; then exit 1;fi
+
+  if test -z "$DISK"; then DISK="no disk"; fi
+ 
+  if cat /proc/partitions|grep -q "${DISK}$"; then
+
+    echo
+    echo "!!!!! Your are about to erease  $DISK   !!!!!"
+    echo 
+    echo -n "Do you want to continue? (Yes/No) "
+    read ANS
+
+    case $ANS in
+      Yes)
+       #echo "Yes"
+       RET=false
+       ;;
+      No)
+       #echo "No"
+       exit
+       ;;
+      *)
+       echo "Answer Yes or No!"
+       ;;
+    esac
+  else
+   RET=true
+  fi
+done
+
+echo "*****************$ANS"
+
+# exit
+
+umount /dev/${DISK}1
+umount /dev/${DISK}2
+umount /dev/${DISK}3
+
+
+parted --align optimal --script /dev/${DISK} -- mklabel msdos
+parted --align optimal --script /dev/${DISK} -- mkpart primary 2048s 5G
+parted --align optimal --script /dev/${DISK} -- set 1 boot on
+parted --align optimal --script /dev/${DISK} -- mkpart primary 5G 6G
+parted --align optimal --script /dev/${DISK} -- mkpart primary 6G 95%
+
+umount /dev/${DISK}1
+umount /dev/${DISK}2
+umount /dev/${DISK}3
+
+mkfs.ext4 -L boot-images /dev/${DISK}1
+mkfs.ext4 -L persistence /dev/${DISK}2
+mkfs.ext4 -L persistence /dev/${DISK}3
+
+if ! test -d ${MNT}/part1;then mkdir ${MNT}/part1;fi
+if mount /dev/${DISK}1 ${MNT}/part1; then
+    # install grub
+    grub-install --force --root-directory=${MNT}/part1 /dev/${DISK}
+    if cd ${MNT}/part1/boot/grub/; then
+      rm *
+      cp /lib/live/mount/medium/grub.cfg .
+      #wget ${BOOT_IMAGES_URL}/grub.cfg
+      echo -n ""
+    else
+      echo "could not cd /mnt/part1/boot/grub"
+    fi
+
+    # install initial boot-image
+    mkdir ${MNT}/part1/boot-images/
+    if cd ${MNT}/part1/boot-images/; then
+       cat /dev/sr0 > 000000.iso
+       touch cur-iso-000000
+       touch version
+       echo "0" > version
+
+#      if wget ${BOOT_IMAGES_URL}/version; then
+#        wget ${BOOT_IMAGES_URL}/$(printf "%06i.iso" $(cat version))
+#        touch $(printf "cur-iso-%06i" $(cat version))
+#        echo -n ""
+#      fi
+    else
+       echo "could not cd /mnt/part1/boot'images"
+    fi
+else
+  echo "could not mount /dev/${DISK}1"
+fi
+
+
+if ! test -d ${MNT}/part2;then mkdir ${MNT}/part2;fi
+if mount /dev/${DISK}2 ${MNT}/part2; then
+    echo "/etc/cups/" > ${MNT}/part2/persistence.conf
+fi
+
+
+if ! test -d ${MNT}/part3;then mkdir ${MNT}/part3;fi
+if mount /dev/${DISK}3 ${MNT}/part3; then
+    echo "/opt/ltsp/images/" > ${MNT}/part3/persistence.conf
+    echo "/var/lib/tftpboot/ltsp/i386/" >> ${MNT}/part3/persistence.conf
+fi
+
+sleep 5
+umount ${MNT}/part1
+umount ${MNT}/part2
+umount ${MNT}/part3
+
+sleep 5
+umount ${MNT}/part1
+umount ${MNT}/part2
+umount ${MNT}/part3
+
+
+
+ 
+}
+
+
+do_sync()
+{
+
+  URL=$1
+
+  cd $2
+
+  TYPE=$3
+
+  if test -f version; then
+    VERSION=$(cat version)
+  else
+    VERSION=0
+    touch version
+    echo "0" > version
+  fi
+
+  VERSION_neu="$(wget -O - ${URL}/version 2>/dev/null)"
+
+  if test -n "$VERSION_neu"; then 
+ 
+    if test "$VERSION"  = "$VERSION_neu"; then
+      echo "nothing to do"
+    else
+      echo "copy $(printf "%06i.*" $VERSION) to $(printf "%06i.*" $VERSION_neu)..."
+      if test -f $(printf "%06i" $VERSION).$TYPE; then
+        cp $(printf "%06i" $VERSION).$TYPE $(printf "%06i" $VERSION_neu).$TYPE
+      else
+        touch  $(printf "%06i" $VERSION_neu).$TYPE
+      fi
+
+      echo "zsync..." 
+      if zsync "${URL}/$(printf "%06i" $VERSION_neu).${TYPE}.zsync"; then
+       
+        if test "$TYPE" = "iso"; then
+          wget -O ${MNT}/boot-images/boot/grub/grub.cfg ${URL}/grub.cfg
+        fi
+
+
+        # sync meta info
+        rm version
+        wget ${URL}/version
+
+        rm *-$TYPE-*
+        touch old-$TYPE-$(printf "%06i" $VERSION)
+        touch cur-$TYPE-$(printf "%06i" $VERSION_neu)
+        touch nxt-$TYPE-$(printf "%06i" $VERSION_neu)
+
+
+        #remove old images
+        echo "remove oldies"
+        if test -f $(printf "%06i" $(( $VERSION -3 ))).$TYPE; then
+          rm $(printf "%06i.*" $(( $VERSION -3 )))
+        fi
+        if test -f *.zs-old; then 
+          rm *.zs-old 
+        fi
+
+        echo "$VERSION_neu" > version
+
+        echo "ok"
+      fi #zsync
+    fi # version neu
+  fi 
+}
+
+
+
+#
+# Function that starts the daemon/service
+#
+do_start()
+{
+  if ! test -d /mnt/boot-images; then mkdir /mnt/boot-images;fi
+
+  
+  if mount -L boot-images /mnt/boot-images 2>/dev/null >/dev/null; then
+
+    echo "Starting LTSP-Boot-Services"
+    # start sync-daemon in background
+    if ! test -f /var/run/sync-daemon.pid; then
+      $0 daemon &
+      echo $! > /var/run/sync-daemon.pid
+    fi
+
+    NAME=$(printf "%06i.img" $(cat /opt/ltsp/images/version))
+
+    if test -f /opt/ltsp/images/${NAME}; then
+      if ! test -d ${MNT}/image; then mkdir ${MNT}/image; fi
+      mount -t squashfs /opt/ltsp/images/${NAME} ${MNT}/image
+      rsync -r -l --safe-links --delete  ${MNT}/image/var/lib/tftpboot/ltsp/i386/ /var/lib/tftpboot/ltsp/i386/
+      umount ${MNT}/image
+      if test -h /opt/ltsp/images/i386.img; then rm /opt/ltsp/images/i386.img;fi 
+      ln -s /opt/ltsp/images/${NAME} /opt/ltsp/images/i386.img
+      service nbd-server restart
+    fi
+
+
+  else
+    echo "Use: \"service boot-setup install\" to install LTSP-Boot-Services"
+  fi 
+} 
+
+
+#
+# Function that stops the daemon/service
+#
+do_stop()
+{
+   if test -f /var/run/sync-daemon.pid; then
+     kill $(cat /var/run/sync-daemon.pid)
+     rm /var/run/sync-daemon.pid
+  
+     umount ${MNT}/boot-images
+   fi
+}
+
+#
+# Function that sends a SIGHUP to the daemon/service
+#
+do_reload() 
+{
+ do_stop
+ do_start
+}
+
+
+
+# main
+
+  #if ! cat /proc/cmdline | grep -q "loop"; then exit; fi
+
+  case "$1" in
+    install)
+        do_install
+        ;;
+    sync)
+        do_sync 
+	;;
+    start)
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    *)
+	echo "Usage: $SCRIPTNAME {install|sync|start|stop}" >&2
+	exit 3
+	;;
+  esac
+
+  exit 
+
