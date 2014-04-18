@@ -144,8 +144,6 @@ umount ${MNT}/part1
 umount ${MNT}/part2
 
 
-
-
  
 }
 
@@ -226,6 +224,7 @@ do_start()
   if ! test -d ${MNT}/${IMAGES}; then mkdir ${MNT}/${IMAGES};fi
   
   if mount -L ${IMAGES} ${MNT}/${IMAGES} 2>/dev/null >/dev/null; then
+    DISK=
     echo "Use: \"sudo service ltsp-install [restore|backup|sync]\" to manage LTSP-Workstation"
   else
     echo "Use: \"sudo service ltsp-install install\" to install LTSP-Workstation"
@@ -247,10 +246,11 @@ do_stop()
   case "$1" in
     install)
         do_install
+        do_start
         ;;
     sync)
-        if test -d ${NMT}/${IMAGES}/${IMAGES}; then
-            echo "do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img"
+        echo "do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img"
+        if test -d ${MNT}/${IMAGES}/${IMAGES}; then 
             do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
             echo "done"
         else
