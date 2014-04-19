@@ -212,7 +212,13 @@ do_sync()
   fi 
 }
 
-
+do_daemon()
+{
+  sleep 300
+  while true; do
+     do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
+  done
+}
 
 #
 # Function that starts the daemon/service
@@ -222,8 +228,13 @@ do_start()
   if ! test -d ${MNT}/${IMAGES}; then mkdir ${MNT}/${IMAGES};fi
   
   if mount -L ${IMAGES} ${MNT}/${IMAGES} 2>/dev/null >/dev/null; then
-    DISK=
     echo "Use: \"sudo service ltsp-install [restore|backup|sync]\" to manage LTSP-Workstation"
+    if cat /proc/cmdline|grep -q init-ltsp; then
+      if ! test -f /var/run/sync-daemon.pid; then
+        $0 daemon &
+        echo $! > /var/run/sync-daemon.pid
+      fi
+    fi
   else
     echo "Use: \"sudo service ltsp-install install\" to install LTSP-Workstation"
   fi 
@@ -235,6 +246,10 @@ do_start()
 #
 do_stop()
 {
+  if test -f /var/run/sync-daemon.pid; then
+    kill $(cat /var/run/sync-daemon.pid)
+    rm /var/run/sync-daemon.pid
+  fi
   umount ${MNT}/${IMAGES}
 }
 
@@ -247,12 +262,16 @@ do_stop()
         do_start
         ;;
     sync)
-        echo "do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img"
-        if test -d ${MNT}/${IMAGES}/${IMAGES}; then 
-            do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
-            echo "done"
-        else
+        if ! test -f /var/run/sync-daemon.pid; then
+          echo "do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img"
+          if test -d ${MNT}/${IMAGES}/${IMAGES}; then 
+             do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
+             echo "done"
+          else
             echo "ltsp-images is not mounted"
+          fi
+        else
+          echo "sync-daemon is running. doing nothing"
         fi
         ;;
     backup)
