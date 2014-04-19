@@ -105,7 +105,7 @@ if mount /dev/${DISK}1 ${MNT}/part1; then
 
 
 
-cat<<'EOF' > ${MNT}/part1//boot/grub/grub.cfg
+cat<<'EOF' > ${MNT}/part1/boot/grub/grub.cfg
 set default="0"
 
 function load_video {
