@@ -217,6 +217,7 @@ do_daemon()
   sleep 300
   while true; do
      do_sync ${LTSP_IMAGES_URL} ${MNT}/${IMAGES}/${IMAGES} img
+     sleep 600
   done
 }
 
