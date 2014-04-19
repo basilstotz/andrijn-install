@@ -6,19 +6,19 @@ LB_ARCHITECTURES="i386"
 
 # $LB_DISTRIBUTION: select distribution to use
 # (Default: wheezy)
-LB_DISTRIBUTION="wheezy"
+LB_DISTRIBUTION="testing"
 
 # $LB_PARENT_DISTRIBUTION: select parent distribution to use
 # (Default: wheezy)
-LB_PARENT_DISTRIBUTION="wheezy"
+LB_PARENT_DISTRIBUTION="testing"
 
 # $LB_PARENT_DEBIAN_INSTALLER_DISTRIBUTION: select parent distribution for debian-installer to use
 # (Default: wheezy)
-LB_PARENT_DEBIAN_INSTALLER_DISTRIBUTION="wheezy"
+LB_PARENT_DEBIAN_INSTALLER_DISTRIBUTION="testing"
 
 # $LB_PARENT_MIRROR_BOOTSTRAP: set parent mirror to bootstrap from
 # (Default: http://ftp.debian.org/debian/)
-LB_PARENT_MIRROR_BOOTSTRAP="http://localhost:3242/ftp.debian.org/debian/"
+LB_PARENT_MIRROR_BOOTSTRAP="http://localhost:3142/ftp.debian.org/debian/"
 
 # $LB_PARENT_MIRROR_CHROOT: set parent mirror to fetch packages from
 # (Default: http:/lftp.debian.org/debian/)
@@ -30,11 +30,11 @@ LB_PARENT_MIRROR_CHROOT_SECURITY="http://localhost:3142/security.debian.org/"
 
 # $LB_PARENT_MIRROR_CHROOT_UPDATES: set updates parent mirror to fetch packages from
 # (Default: http://ftp.debian.org/debian/)
-LB_PARENT_MIRROR_CHROOT_UPDATES="http://ftp.debian.org/debian/"
+LB_PARENT_MIRROR_CHROOT_UPDATES="http://localhost:3142/ftp.debian.org/debian/"
 
 # $LB_PARENT_MIRROR_CHROOT_BACKPORTS: set backports parent mirror to fetch packages from
 # (Default: http://ftp.debian.org/debian/)
-LB_PARENT_MIRROR_CHROOT_BACKPORTS="http://ftp.debian.org/debian/"
+LB_PARENT_MIRROR_CHROOT_BACKPORTS="http://localhost:3142/ftp.debian.org/debian/"
 
 # $LB_PARENT_MIRROR_BINARY: set parent mirror which ends up in the image
 # (Default: http://http.debian.net/debian/)

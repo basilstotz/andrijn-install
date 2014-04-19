@@ -273,7 +273,7 @@ EOF
     # install initial boot-image
     mkdir ${MNT}/part1/${IMAGES}/
     if cd ${MNT}/part1/${IMAGES}/; then
-       if $0 sync; then
+       if do_sync ${LTSP_IMAGES_URL} ${MNT}/part1/${IMAGES} img; then
           echo "Syncing ok! Your sytem is ready now."
        else
           echo "Syncing not ok! Try later : sudo service ltsp-install sync."
